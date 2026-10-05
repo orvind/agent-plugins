@@ -1,0 +1,15 @@
+{
+  "name": "orvind",
+  "description": "Orvind plugins for coding agents.",
+  "owner": {
+    "name": "Orvind",
+    "email": "hello@orvind.com"
+  },
+  "plugins": [
+    {
+      "name": "orvind-exporter",
+      "source": "./plugins/orvind-exporter",
+      "description": "Export Unity gameplay for Orvind: the agent asks for the scene, plays and records the game, and hands over the export folder."
+    }
+  ]
+}

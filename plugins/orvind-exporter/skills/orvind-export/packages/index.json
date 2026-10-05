@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "package": "com.gameplay.recorder",
+  "packages": [
+    {
+      "unity": "6000",
+      "packageVersion": "0.9.3",
+      "file": "com.gameplay.recorder-0.9.3-unity6000.0.tgz",
+      "sha256": "4aff2b573de827258a64a94d6a5372cdd8080f8228f9774a125e4aaf91a2baa6",
+      "bytes": 894050
+    },
+    {
+      "unity": "2022.3",
+      "packageVersion": "0.9.3",
+      "file": "com.gameplay.recorder-0.9.3-unity2022.3.tgz",
+      "sha256": "c9a46af489e6c22e1d2fb865671128d05cf1886393b8a6dd99e62d47479c16a4",
+      "bytes": 893782
+    }
+  ]
+}

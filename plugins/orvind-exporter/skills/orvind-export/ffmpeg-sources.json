@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "about": "FFmpeg builds the launcher downloads for a machine that has none. Each file is a gzipped executable; sha256 is of the download, binarySha256 of the unpacked executable.",
+  "sources": [
+    {
+      "platform": "darwin",
+      "arch": "arm64",
+      "ffmpegVersion": "6.0",
+      "url": "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-darwin-arm64.gz",
+      "sha256": "8923876afa8db5585022d7860ec7e589af192f441c56793971276d450ed3bbfa",
+      "bytes": 19246198,
+      "binarySha256": "a90e3db6a3fd35f6074b013f948b1aa45b31c6375489d39e572bea3f18336584"
+    },
+    {
+      "platform": "darwin",
+      "arch": "x64",
+      "ffmpegVersion": "6.1.1",
+      "url": "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-darwin-x64.gz",
+      "sha256": "929b375c1182d956c51f7ac25e0b2b0411fb01f6f407aa15c9758efeb4242106",
+      "bytes": 25296431,
+      "binarySha256": "ebdddc936f61e14049a2d4b549a412b8a40deeff6540e58a9f2a2da9e6b18894"
+    },
+    {
+      "platform": "win32",
+      "arch": "x64",
+      "ffmpegVersion": "6.1.1",
+      "url": "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-win32-x64.gz",
+      "sha256": "8883a3dffbd0a16cf4ef95206ea05283f78908dbfb118f73c83f4951dcc06d77",
+      "bytes": 29581307,
+      "binarySha256": "04e1307997530f9cf2fe35cba2ca7e8875ca91da02f89d6c7243df819c94ad00"
+    }
+  ]
+}

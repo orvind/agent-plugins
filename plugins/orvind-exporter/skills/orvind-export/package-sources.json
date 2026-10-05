@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "package": "com.gameplay.recorder",
+  "about": "Optional: where to download the recorder package for a Unity version this plugin does not carry (see packages/index.json). Each entry: unity (\"6000\" or \"2022.3\"), packageVersion, url (https), sha256, bytes.",
+  "sources": []
+}

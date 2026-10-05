@@ -1,0 +1,11 @@
+{
+  "name": "orvind-exporter",
+  "version": "0.2.1",
+  "description": "Export Unity gameplay for Orvind without manual work: the agent asks which scene to export, plays and records the game through an input script, documents the scripts and hands over the export folder to upload.",
+  "author": {
+    "name": "Orvind",
+    "email": "hello@orvind.com"
+  },
+  "keywords": ["unity", "gameplay", "recording", "orvind"],
+  "skills": "./skills/"
+}

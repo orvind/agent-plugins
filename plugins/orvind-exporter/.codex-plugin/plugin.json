@@ -1,0 +1,23 @@
+{
+  "name": "orvind-exporter",
+  "version": "0.2.1",
+  "description": "Export Unity gameplay for Orvind without manual work: the agent asks which scene to export, plays and records the game through an input script, documents the scripts and hands over the export folder to upload.",
+  "author": {
+    "name": "Orvind",
+    "email": "hello@orvind.com"
+  },
+  "keywords": ["unity", "gameplay", "recording", "orvind"],
+  "skills": "./skills/",
+  "requires_local_executor": true,
+  "interface": {
+    "displayName": "Orvind Exporter",
+    "shortDescription": "Export Unity gameplay for Orvind",
+    "longDescription": "Asks which scene to export, starts the Unity Editor in the background, plays the scene with an input script the agent writes and records it, then documents the game's scripts and gives you the export folder to upload to your campaign at app.orvind.com. If the agent cannot play the game, you play instead.",
+    "developerName": "Orvind",
+    "category": "Developer Tools",
+    "capabilities": ["Interactive", "Read", "Write"],
+    "defaultPrompt": [
+      "Export gameplay of this Unity project for Orvind."
+    ]
+  }
+}

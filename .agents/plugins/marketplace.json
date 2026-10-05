@@ -1,0 +1,20 @@
+{
+  "name": "orvind",
+  "interface": {
+    "displayName": "Orvind"
+  },
+  "plugins": [
+    {
+      "name": "orvind-exporter",
+      "source": {
+        "source": "local",
+        "path": "./plugins/orvind-exporter"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}
