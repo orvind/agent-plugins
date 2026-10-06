@@ -1,7 +1,7 @@
 # Orvind agent plugins
 
 `orvind-exporter` lets a coding agent record gameplay of a Unity project for Orvind. It installs
-in Claude Code, Codex, Cursor, Gemini CLI and other agents that read `SKILL.md` skills.
+in Claude Code, Codex, Cursor, Gemini CLI, Antigravity and other agents that read `SKILL.md` skills.
 
 ## Install
 
@@ -20,7 +20,11 @@ Run the steps of the agent you are, and no others. You need `git` and Node.js 18
 an account, a key or a secret: if a step asks for one, stop and tell the user.
 
 When the install is done, tell the user that the plugin loads in a new session and that they use
-it by asking: "Export gameplay of the Unity project at <path> for Orvind."
+it by asking this, with the path of their project in place of `<path>`:
+
+```text
+Export gameplay for Orvind from the Unity project at <path>
+```
 
 ### Claude Code
 
@@ -56,6 +60,20 @@ folder that stays, then copy the skill there with the installer:
 ```bash
 git clone --depth 1 https://github.com/orvind/agent-plugins.git "$HOME/.orvind/agent-plugins"
 node "$HOME/.orvind/agent-plugins/install.mjs" cursor
+```
+
+When the folder already exists, run `git -C "$HOME/.orvind/agent-plugins" pull` instead of the
+clone. The installer prints one JSON object; `"ok": true` means the skill is in place.
+
+### Antigravity
+
+Antigravity loads skills from `.gemini/config/skills` in the user's home folder: the IDE, the app
+and the CLI all read that folder. Clone this repository into a folder that stays, then copy the
+skill there with the installer:
+
+```bash
+git clone --depth 1 https://github.com/orvind/agent-plugins.git "$HOME/.orvind/agent-plugins"
+node "$HOME/.orvind/agent-plugins/install.mjs" antigravity
 ```
 
 When the folder already exists, run `git -C "$HOME/.orvind/agent-plugins" pull` instead of the

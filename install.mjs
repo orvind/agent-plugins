@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-// Installs the Orvind Exporter skill for an agent that loads skills from a folder (Cursor and other
-// agents that read SKILL.md). Claude Code, Codex and Gemini CLI install from this repository with
-// their own commands instead: see README.md.
+// Installs the Orvind Exporter skill for an agent that loads skills from a folder (Cursor, Antigravity
+// and other agents that read SKILL.md). Claude Code, Codex and Gemini CLI install from this repository
+// with their own commands instead: see README.md.
 //
 //   node install.mjs cursor                 into ~/.cursor/skills
+//   node install.mjs antigravity            into ~/.gemini/config/skills
 //   node install.mjs agents                 into ~/.agents/skills (the folder several agents share)
 //   node install.mjs --dir <skills folder>  into the skills folder of any other agent
 //   node install.mjs <target> --uninstall   remove the skill again
@@ -23,6 +24,8 @@ const SKILL_SOURCE = path.join(REPOSITORY_ROOT, 'plugins', 'orvind-exporter', 's
 export function knownSkillsFolders(home = os.homedir()) {
   return {
     cursor: path.join(home, '.cursor', 'skills'),
+    // The one global folder that the Antigravity IDE, the Antigravity app and its CLI all read.
+    antigravity: path.join(home, '.gemini', 'config', 'skills'),
     agents: path.join(home, '.agents', 'skills'),
   };
 }
@@ -120,8 +123,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     result = options.uninstall ? uninstallSkill(folder) : installSkill(folder);
     if (result.state === 'installed' || result.state === 'updated') {
       result.next =
-        'Tell the user the skill is installed and that it loads in a new agent session. To use it they ask: ' +
-        '"Export gameplay of the Unity project at <path> for Orvind."';
+        'Tell the user the skill is installed and that it loads in a new agent session. To use it they ask, ' +
+        'with the path of their project at the end: "Export gameplay for Orvind from the Unity project at <path>"';
     }
   } catch (error) {
     result = { ok: false, state: 'failed', error: error.message };
