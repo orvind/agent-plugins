@@ -255,7 +255,9 @@ wait for the answer:
 ```text
 I could not play this game well enough to record it: <what blocked you, in one sentence>.
 Can you tell me how it is played, or play one round yourself? If you play, I open Unity with a
-Start exporting button: get to the gameplay, press it, play a round, then press Stop and finish.
+small window: press Start the game to go past the menus, press Start recording when the gameplay
+is on screen, play a round, then press Save and export. Retry throws a bad take away so you can
+start again.
 ```
 
 Leave out the first option when an explanation cannot help (keys you cannot press).
@@ -270,15 +272,17 @@ Leave out the first option when an explanation cannot help (keys you cannot pres
   ```
 
   Unity opens the scene and waits with a small window; nothing is recorded yet. The user can
-  change settings, press Play and go past the menus. The recording starts when they press Start
-  exporting (pressed before Play, it starts the game as well) and ends when they press Stop and
-  finish or leave Play Mode. Unity then saves, exports and closes by itself. There is no time
+  change settings, press Start the game (or Play) and go past the menus without recording. The
+  recording starts when they press Start recording (pressed before the game runs, it starts the
+  game as well) and ends when they press Save and export or leave Play Mode. Retry (they confirm
+  it) deletes the take, stops the game and waits again, as many times as they like; the status
+  counts these in `recording.discardedTakes`. Unity then saves, exports and closes by itself. There is no time
   limit while Unity waits; `--max-duration` limits the recording. The command returns when Unity
   has closed, so run it detached or with a long timeout. There is no review step for a recording
   the user made, and what they save while playing stays saved. Then step 6.
 
-  State `not-started` means they closed Unity without pressing Start exporting: nothing was
-  recorded. Ask whether they want to try again.
+  State `not-started` means they closed Unity without saving a take (before pressing Start
+  recording, or after a Retry): nothing was recorded. Ask whether they want to try again.
 - They can do neither now: stop, and say in one sentence that nothing was exported.
 
 ### 6. Write the gameplay brief and finish

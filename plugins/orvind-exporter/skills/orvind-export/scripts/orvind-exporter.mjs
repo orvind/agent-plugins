@@ -1802,7 +1802,7 @@ const NEXT = {
   'package-missing': 'The project has no recorder package that this launcher can drive (none, or an older build). Unless their request ' +
     'already allowed it, ask the user whether you may put in the one this plugin carries, then run "install --project <dir>" and try again.',
   cancelled: 'Nothing is running any more. Start the command again when you are ready.',
-  'not-started': 'The user closed Unity without pressing Start exporting, so nothing was recorded. Ask whether they want to try again.',
+  'not-started': 'The user closed Unity without saving a take (Start recording, then Save and export), so nothing was recorded. Ask whether they want to try again.',
   'agent-output-rejected': 'Nothing was deleted. Fix the Markdown as the validator message says (agent.validatorError), ' +
     'run "check --job <job>" until it passes, then run "complete --job <job>" again.',
 };
