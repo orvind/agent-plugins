@@ -85,6 +85,10 @@ Read the result before anything else:
   `install --project "<project>" --package "<folder or .tgz>"`. Then run `preflight` again.
   The line it adds is a path on this computer; the report at the end says so.
   `uninstall --project "<project>"` removes it again when the user asks.
+- A game exported before always records with the build this skill carries. When the project has
+  an older build that this launcher put in, `preflight`, `rehearse` and `record` replace it
+  themselves (`recorderPackage.upgraded`, `recorderPackageUpgraded`). That is not a question for
+  the user: never ask whether to update it, and never keep the old build.
 - `recorderPackage.missing` is set: the project's manifest already has a recorder line, but it
   points at a file or folder that is gone, and Unity cannot open the project like that. It is the
   same question to the user and the same `install`, which replaces the line (the result's

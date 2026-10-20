@@ -460,14 +460,49 @@ function describeRecorderPackage(project, unityVersion) {
     const source = bundled ? null : findPackageSource(unityVersion);
     described.download = source ? { url: source.url, packageVersion: source.packageVersion, bytes: source.bytes, unity: source.unity } : null;
   } else if (bundled && typeof described.source === 'string') {
-    // A package this launcher installed is named after its checksum.
-    const installed = /com\.gameplay\.recorder-([0-9a-f]{16})\.tgz$/.exec(described.source);
+    const installed = LAUNCHER_PACKAGE_LINE.exec(described.source);
     if (installed && installed[1] !== bundled.sha256.slice(0, 16)) {
       described.updateAvailable = { packageVersion: bundled.packageVersion };
     }
   }
 
   return described;
+}
+
+/** A manifest line for a package this launcher installed: the copy in the store is named after its checksum. */
+const LAUNCHER_PACKAGE_LINE = /^file:.*com\.gameplay\.recorder-([0-9a-f]{16})\.tgz$/;
+
+/**
+ * Points a project that this launcher gave another build of the recorder package (an earlier plugin's, or
+ * one whose copy is gone) at the build this plugin carries, so a game exported before always records with
+ * the current one. A package the user embedded or pointed at themselves is left alone. Returns null when
+ * nothing changed, { error } when the plugin's copy is unusable, else what the manifest line was and is.
+ */
+export function upgradeRecorderPackage(project, folder = BUNDLED_PACKAGES_FOLDER, store = packageStore()) {
+  if (fs.existsSync(path.join(project, 'Packages', PACKAGE_NAME))) {
+    return null;
+  }
+
+  const manifestPath = path.join(project, 'Packages', 'manifest.json');
+  const manifest = readJson(manifestPath);
+  const line = manifest && manifest.dependencies ? manifest.dependencies[PACKAGE_NAME] : null;
+  const installed = typeof line === 'string' ? LAUNCHER_PACKAGE_LINE.exec(line) : null;
+  const bundled = installed ? findBundledPackage(readUnityVersion(project), folder) : null;
+  if (!bundled || installed[1] === bundled.sha256.slice(0, 16)) {
+    return null;
+  }
+
+  const previousVersion = readRecorderPackage(project).version;
+  let stored;
+  try {
+    stored = storeBundledPackage(bundled, store);
+  } catch (error) {
+    return { error: error.message };
+  }
+
+  manifest.dependencies[PACKAGE_NAME] = `file:${stored.file.replace(/\\/g, '/')}`;
+  writeJson(manifestPath, manifest);
+  return { previous: line, previousVersion, now: manifest.dependencies[PACKAGE_NAME], packageVersion: bundled.packageVersion };
 }
 
 function describeDownload(download) {
@@ -1797,8 +1832,8 @@ const NEXT = {
   discarded: 'The recording was deleted. Record again with a better script, or with --interactive.',
   'project-open': 'Ask the user to close the Unity Editor (the project can only be open in one Editor), then run the command again.',
   'packages-unresolved': 'Read "details": it names the package Unity could not load. When it is the recorder package ' +
-    '(com.gameplay.recorder), run "preflight" and resolve what it reports ("install --project <dir>" replaces a broken or outdated ' +
-    'recorder line, after the user agreed). Any other package is the project\'s own problem: tell the user.',
+    '(com.gameplay.recorder), run "preflight" and resolve what it reports (it replaces a line this launcher put in itself; ' +
+    '"install --project <dir>" replaces any other broken line, after the user agreed). Any other package is the project\'s own problem: tell the user.',
   'package-missing': 'The project has no recorder package that this launcher can drive (none, or an older build). Unless their request ' +
     'already allowed it, ask the user whether you may put in the one this plugin carries, then run "install --project <dir>" and try again.',
   cancelled: 'Nothing is running any more. Start the command again when you are ready.',
@@ -2404,6 +2439,23 @@ async function refuseWhenOutdated() {
     : null;
 }
 
+/**
+ * Before a rehearsal or a recording: puts the plugin's build of the recorder package into a project that has
+ * an older one from this launcher. Left for later while the project is open in an Editor (the run reports that).
+ */
+function upgradeBeforeRun(project) {
+  const upgraded = findEditorWithProject(project) ? null : upgradeRecorderPackage(project);
+  if (upgraded && upgraded.error) {
+    return { refusal: { ok: false, state: 'package-unusable', error: upgraded.error, next: 'Tell the user that this copy of the plugin is damaged and must be reinstalled.' } };
+  }
+
+  return { upgraded };
+}
+
+function withUpgrade(result, upgraded) {
+  return upgraded ? { ...result, recorderPackageUpgraded: upgraded } : result;
+}
+
 async function downloadArchive(address, target) {
   const url = new URL(address);
   if (!isAllowedDownloadUrl(url)) {
@@ -2573,6 +2625,15 @@ const commands = {
       info.plugin.updateCheck = update.reason;
     }
     if (!info.unity) problems.push(info.unityNotFound);
+    if (!info.projectOpenInEditorPid && !info.plugin.updateRequired) {
+      // The project always records with the build this plugin carries; an older one this launcher put in is replaced.
+      const upgraded = upgradeRecorderPackage(project);
+      if (upgraded && upgraded.error) {
+        problems.push(`The recorder package in this plugin is unusable: ${upgraded.error}`);
+      } else if (upgraded) {
+        info.recorderPackage = { ...describeRecorderPackage(project, info.unityVersion), upgraded };
+      }
+    }
     if (info.projectOpenInEditorPid) problems.push(`The project is open in the Unity Editor (pid ${info.projectOpenInEditorPid}); ask the user to close it before recording.`);
     if (!info.recorderPackage.installed) {
       const { bundled, download, missing } = info.recorderPackage;
@@ -2592,8 +2653,9 @@ const commands = {
           : `The recorder package (${PACKAGE_NAME}) is not in this project, and this plugin carries none for Unity ${info.unityVersion}. ` +
             'Ask the user where the package is, then run "install --project <dir> --package <folder or .tgz>".');
     } else if (info.recorderPackage.updateAvailable) {
-      info.warnings.push('The project has another build of the recorder package than this plugin carries ' +
-        `(version ${info.recorderPackage.updateAvailable.packageVersion}). To use the plugin's build, ask the user, then run "install --project <dir>".`);
+      info.notes = [...(info.notes || []), 'The project has an older build of the recorder package than this plugin carries ' +
+        `(version ${info.recorderPackage.updateAvailable.packageVersion}). The next command that runs Unity on it with the Editor closed puts in ` +
+        "the plugin's build itself; do not ask the user about it."];
     }
     if (!info.ffmpeg.path) {
       const source = findFfmpegSource();
@@ -2697,8 +2759,10 @@ const commands = {
     const project = resolveProject(options);
     const outdated = await refuseWhenOutdated();
     if (outdated) return outdated;
+    const upgrade = upgradeBeforeRun(project);
+    if (upgrade.refusal) return upgrade.refusal;
     const job = newJob(project, options, 'rehearse');
-    return runStep(job, 'Rehearse', playArgs(job, options, 30), options, false);
+    return withUpgrade(await runStep(job, 'Rehearse', playArgs(job, options, 30), options, false), upgrade.upgraded);
   },
 
   async record(options) {
@@ -2709,6 +2773,8 @@ const commands = {
 
     const outdated = await refuseWhenOutdated();
     if (outdated) return outdated;
+    const upgrade = upgradeBeforeRun(project);
+    if (upgrade.refusal) return upgrade.refusal;
 
     const job = newJob(project, options, options.interactive ? 'record_interactive' : 'record');
     const args = playArgs(job, options, options.interactive ? 600 : 60);
@@ -2724,7 +2790,7 @@ const commands = {
       args.push('-grExitAt', options['no-review'] ? 'handoff' : 'review');
     }
 
-    return runStep(job, 'Run', args, options, Boolean(options.interactive));
+    return withUpgrade(await runStep(job, 'Run', args, options, Boolean(options.interactive)), upgrade.upgraded);
   },
 
   async open(options) {
