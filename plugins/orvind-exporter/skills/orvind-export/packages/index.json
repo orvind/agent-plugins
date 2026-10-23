@@ -6,15 +6,15 @@
       "unity": "6000",
       "packageVersion": "0.9.3",
       "file": "com.gameplay.recorder-0.9.3-unity6000.0.tgz",
-      "sha256": "d2f89b1dc150a4b26ec7b80383486b646b2be9042835ff35a7aca78ddf678b22",
-      "bytes": 898697
+      "sha256": "6da104ea3e0ce56792187bb2faa51cc48825efbedb84a2f5c07922327bde19af",
+      "bytes": 898687
     },
     {
       "unity": "2022.3",
       "packageVersion": "0.9.3",
       "file": "com.gameplay.recorder-0.9.3-unity2022.3.tgz",
-      "sha256": "d9ba5d63099f4ebf8802b86fcba8185884464491d49edc90d72d093868ec097f",
-      "bytes": 898928
+      "sha256": "6172271a9bcd8b6a8c9e61103ce17e738f91fb401ad9e5f6707803ba2c3cf3d7",
+      "bytes": 898914
     }
   ]
 }
