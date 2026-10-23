@@ -1,6 +1,6 @@
 {
   "name": "orvind-exporter",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "description": "Export Unity gameplay for Orvind without manual work: the agent asks which scene to export, plays and records the game through an input script, documents the scripts and hands over the export folder to upload.",
   "author": {
     "name": "Orvind",
