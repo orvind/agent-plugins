@@ -101,7 +101,9 @@ Read the result before anything else:
   scene question, go straight to step 5.
 - `scenes`, `buildScenes`, `startScene` and `sceneDigests` are what you ask the scene question
   with (below). `preflight --scene "<scene>"` adds the digest of a scene that is not listed yet.
-- `suggestedSize` is the render size every run uses unless you pass `--size`.
+- `suggestedSize` is the render size every run uses unless you pass `--size`: a phone screen,
+  1080x1920 portrait, or 1920x1080 when the project only allows landscape. The video is recorded
+  at this size too.
 - `ffmpeg` is the FFmpeg the run will use for the video's audio and for the contact sheets: one
   that is already on the machine, or one this launcher downloaded earlier. When there is none, a
   warning says so and `ffmpeg.download` names what the launcher can fetch (20 to 30 MB from
@@ -362,7 +364,7 @@ Nothing about how the run went.
 
 | Option | Commands | Meaning |
 |-|-|-|
-| `--size <WxH>` | rehearse, record | Render size. Default: `suggestedSize` (720x1280 for portrait games, else 1280x720). Keep one size for all runs so screen positions stay comparable. |
+| `--size <WxH>` | rehearse, record | Render size. Default: `suggestedSize`, a phone screen: 1080x1920, or 1920x1080 when the project only allows landscape. Keep one size for all runs so screen positions stay comparable. |
 | `--duration <s>` | rehearse, record | Time limit of the run (default 30 for a rehearsal, 60 for a recording). The script ending ends the run earlier. |
 | `--fps <n>` | rehearse, record | Video frame rate (default 30). Scripted runs are held to this rate; a busy machine can fall below it (`play.summary.averageFps`), so run one job at a time. |
 | `--seed <n>` | rehearse, record | Seeds `UnityEngine.Random`, for games whose levels are random. |

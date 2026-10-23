@@ -61,7 +61,7 @@ const USAGE = `Orvind Exporter launcher
 
 Common options: --unity <path to the Unity executable>, --output <dir> (default <project>/ExportedData/GameplayRecording),
 --detach (return at once; use wait/status), --timeout <s>, --on-pending fail|setaside.
---size defaults to the project's orientation (preflight: suggestedSize). --fps is the video frame rate (default 30); a
+--size defaults to a phone screen, 1080x1920, or 1920x1080 for a landscape-only project (preflight: suggestedSize). --fps is the video frame rate (default 30); a
 rehearsal and a scripted recording both run the game at exactly that rate, so they behave the same.
 --csharp chooses which C# sources the recording exports for the gameplay brief: attached (default: the scripts on the
 objects seen during the recording and the project scripts those use), all (every script of the project), exclude (none)
@@ -224,18 +224,18 @@ export function readYamlScalar(text, key) {
 }
 
 /**
- * A render size for unattended runs: portrait when the project is locked to portrait, landscape
- * otherwise. Orientation values: 0 portrait, 1 portrait upside down, 2 and 3 landscape, 4 auto-rotation.
+ * A phone render size for unattended runs: 1080x1920 portrait, or 1920x1080 when the project only allows
+ * landscape. Orientation values: 0 portrait, 1 portrait upside down, 2 and 3 landscape, 4 auto-rotation.
  */
 export function suggestSize(settingsText) {
   const orientation = Number(readYamlScalar(settingsText, 'defaultScreenOrientation'));
   const allow = (name) => readYamlScalar(settingsText, name) === '1';
-  const portrait =
-    orientation === 0 || orientation === 1 ||
+  const landscape =
+    orientation === 2 || orientation === 3 ||
     (orientation === 4 &&
-      (allow('allowedAutorotateToPortrait') || allow('allowedAutorotateToPortraitUpsideDown')) &&
-      !allow('allowedAutorotateToLandscapeRight') && !allow('allowedAutorotateToLandscapeLeft'));
-  return portrait ? { width: 720, height: 1280, orientation: 'portrait' } : { width: 1280, height: 720, orientation: 'landscape' };
+      (allow('allowedAutorotateToLandscapeRight') || allow('allowedAutorotateToLandscapeLeft')) &&
+      !allow('allowedAutorotateToPortrait') && !allow('allowedAutorotateToPortraitUpsideDown'));
+  return landscape ? { width: 1920, height: 1080, orientation: 'landscape' } : { width: 1080, height: 1920, orientation: 'portrait' };
 }
 
 const INPUT_HANDLING = { 0: 'legacy Input Manager', 1: 'Input System', 2: 'both' };
