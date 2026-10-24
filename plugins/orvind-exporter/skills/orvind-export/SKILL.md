@@ -179,7 +179,9 @@ The scene export (`MainScene.glb`) is what the playable is rebuilt from, and it 
 moment the recording starts. It must show the game's level. A game that boots in an empty or
 loading scene, or opens a menu or hub scene first, has nothing of the level there: get to the
 level first, wait until it exists (`wait_until` on its scene or on an object of it), then
-`start_recording`. A recording whose scene export is empty is refused (the result says
+`start_recording`. When the start shows no 3D model, the recorder takes the scene export again
+when 3D models first come on screen, but the menu is still in the video and the input: start at
+the gameplay all the same. A recording whose scene export stays empty is refused (the result says
 `MainScene.glb is empty`); nothing is exported until you record again from the right moment.
 
 First decide, from the scripts and the exploration runs, which screens are gameplay. A screen is
