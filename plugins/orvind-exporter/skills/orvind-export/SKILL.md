@@ -1,6 +1,6 @@
 ---
 name: orvind-export
-description: Exports gameplay of a Unity project with Orvind Exporter, with no manual work from the user. You ask which scene to export from, play the game yourself through an input script, record it, document the game's scripts and finalize the export folder the user uploads to app.orvind.com. Use when the user asks to record, capture or export gameplay of a Unity project for Orvind or with Orvind Exporter.
+description: Exports gameplay of a Unity project with Orvind Exporter, with no manual work from the user. You ask which scene to export from, play the game yourself through an input script, record it, document the game's scripts and finalize the export folder the user uploads to app.orvind.com. Use when the user asks to record, capture or export gameplay of a Unity project for Orvind or with Orvind Exporter, or brings a source-questions file (source-questions.json) that Orvind returned for an export.
 ---
 
 # Export a Unity game for Orvind
@@ -361,6 +361,32 @@ Add a line only for something the user has to act on: files Unity rewrote in the
 (`projectFilesChanged`), a recording without audio, or the package line in
 `Packages/manifest.json` if you added it (it is a path on this computer, not for committing).
 Nothing about how the run went.
+
+## When Orvind sends source questions
+
+After an upload, Orvind's rebuild may return a source-questions file (`source-questions.json`,
+next to a `source-questions.md` the user may paste instead): behaviours it could not reproduce,
+with the scripts most likely to explain them. Answer it in the project the export came from,
+without recording again and without sharing the scripts:
+
+```bash
+node orvind-exporter.mjs answer --project "<project>" --session "<session folder>" --questions "<source-questions.json>"
+```
+
+- `<session folder>` is the finished export (`session_<id>`) the questions are about; the
+  launcher refuses another one (`bad-session`) or a file that is not a source-questions file
+  (`bad-questions`).
+- `awaiting-agent`: `agent.scriptsPath` holds the sources the questions name and the ones they
+  use, `source-questions.json`, `SOURCE_MAP.md`, the instructions (`agent.promptPath`) and an
+  `answers.md` to fill in. Follow the prompt, as in step 6, then run `check --job "<job>"` and
+  `complete --job "<job>"` with this job. The same rules apply: no code, no secrets, no paths.
+- `finalized`: `scripts/answers.md` is in the session folder (`agent.sessionAnswersPath`), and the
+  folder is ready to upload again. Tell the user exactly this:
+
+```text
+The answers were added to the export: <session folder>
+Upload this folder to your campaign at app.orvind.com again.
+```
 
 ## Options
 
