@@ -43,6 +43,10 @@ const USAGE = `Orvind Exporter launcher
   discard   --job <dir> --confirm            delete a reviewed recording the user rejected
   check     --job <dir>                      validate the script documents without finishing (run it as often as needed)
   complete  --job <dir>                      validate the script documents and finalize the session
+  answer    --project <dir> --session <session folder> --questions <source-questions.json>
+                                             answer a playable pipeline's questions about the game's code: hands the
+                                             sources they name to you with SOURCE_QUESTIONS_PROMPT.md; then "check" and
+                                             "complete" with the job write scripts/answers.md into the session folder
   status    --job <dir>                      current state of a job (does not start Unity)
   wait      --job <dir> [--timeout <s>]      wait for a detached job
   help                                       this text
@@ -1842,8 +1846,20 @@ const NEXT = {
     'run "check --job <job>" until it passes, then run "complete --job <job>" again.',
 };
 
+/** What to do next in a job that answers source questions (the states mean other things there). */
+const ANSWER_NEXT = {
+  'awaiting-agent': 'Open agent.promptPath and follow it with agent.scriptsPath as the folder it talks about: read ' +
+    'source-questions.json and the sources it names, fill in answers.md, run "check --job <job>", then run ' +
+    '"complete --job <job>" (it signs off the answers and writes scripts/answers.md into the session folder).',
+  checked: 'The answers would be accepted. Look at each entry of agent.notes once and correct what is wrong, then run "complete --job <job>".',
+  finalized: 'Done: the answers are in agent.sessionAnswersPath. Tell the user: "The answers were added to the export: ' +
+    '<session.sessionPath>" and "Upload this folder to your campaign at app.orvind.com again." Add nothing else unless they have to act on it.',
+  'agent-output-rejected': 'Nothing was lost. Fix answers.md as the validator message says (agent.validatorError), ' +
+    'run "check --job <job>" until it passes, then run "complete --job <job>" again.',
+};
+
 /** The JSON a command prints: what happened, where the files are, and what to do next. */
-const COMMAND_NAMES = { Run: 'record', Rehearse: 'rehearse', Approve: 'approve', Discard: 'discard', Complete: 'complete', Check: 'check', Status: 'pending' };
+const COMMAND_NAMES = { Run: 'record', Rehearse: 'rehearse', Approve: 'approve', Discard: 'discard', Complete: 'complete', Check: 'check', Status: 'pending', Answer: 'answer' };
 
 function buildResult(job, record, wait) {
   const status = readStatus(record);
@@ -2002,6 +2018,10 @@ function buildResult(job, record, wait) {
   }
 
   result.log = record.logFile;
+  if (job.kind === 'answer' && !result.next && ANSWER_NEXT[result.state]) {
+    result.next = ANSWER_NEXT[result.state];
+  }
+
   result.next = result.next || NEXT[result.state] || (result.ok ? undefined : 'See "error" and the Unity log.');
   return result;
 }
@@ -2834,6 +2854,10 @@ const commands = {
 
   async check(options) {
     const job = loadJob(options);
+    if (job.kind === 'answer') {
+      return runAnswerStep(job, 'Check', options);
+    }
+
     const handoff = lastStatus(job, 'awaiting-agent');
     if (!handoff || !handoff.session || !handoff.session.sessionPath) {
       return { ok: false, state: 'not-awaiting-agent', error: 'This job has no session that waits for the script documents.' };
@@ -2844,6 +2868,10 @@ const commands = {
 
   async complete(options) {
     const job = loadJob(options);
+    if (job.kind === 'answer') {
+      return runAnswerStep(job, 'Complete', options);
+    }
+
     const handoff = lastStatus(job, 'awaiting-agent');
     if (!handoff || !handoff.session || !handoff.session.sessionPath) {
       return { ok: false, state: 'not-awaiting-agent', error: 'This job has no session that waits for the script documents.' };
@@ -2857,6 +2885,41 @@ const commands = {
     }
 
     return runStep(job, 'Complete', ['-grSession', handoff.session.sessionPath], options, false);
+  },
+
+  async answer(options) {
+    const project = resolveProject(options);
+    const session = path.resolve(required(options, 'session'));
+    const questionsFile = path.resolve(required(options, 'questions'));
+    let questions;
+    try {
+      questions = parseSourceQuestions(fs.readFileSync(questionsFile, 'utf8'));
+    } catch (error) {
+      return { ok: false, state: 'bad-questions', error: `${questionsFile}: ${error.code === 'ENOENT' ? 'the file was not found' : error.message}` };
+    }
+
+    const sessionProblem = checkAnswerSession(session, questions);
+    if (sessionProblem) {
+      return { ok: false, state: 'bad-session', error: sessionProblem };
+    }
+
+    const upgrade = upgradeBeforeRun(project);
+    if (upgrade.refusal) return upgrade.refusal;
+    const job = newJob(project, options, 'answer');
+    // The questions are kept with the job, so the hand-off does not depend on the file staying where it was.
+    const questionsCopy = path.join(job.directory, 'source-questions.json');
+    fs.copyFileSync(questionsFile, questionsCopy);
+    job.answer = { session, questions: questionsCopy, workspace: path.join(job.directory, 'answers'), ids: questions.ids };
+    saveJob(job);
+    const result = await runStep(job, 'Answer', answerArgs(job), options, false);
+    if (result.state === 'awaiting-agent') {
+      const answers = path.join(job.answer.workspace, 'scripts', 'answers.md');
+      if (!fs.existsSync(answers)) {
+        fs.writeFileSync(answers, answersSkeleton(questions.ids));
+      }
+    }
+
+    return withUpgrade(result, upgrade.upgraded);
   },
 
   async status(options) {
@@ -2937,7 +3000,9 @@ const commands = {
       if (lastStatus({ ...job, directory }, 'awaiting-review')) {
         entry.waitingFor = 'the user\'s review (open, then approve or discard --confirm)';
       } else if (lastStatus({ ...job, directory }, 'awaiting-agent') && state !== 'finalized') {
-        entry.waitingFor = 'the script documents (follow the prompt, then complete)';
+        entry.waitingFor = job.kind === 'answer'
+          ? 'the answers to the source questions (follow the prompt, then complete)'
+          : 'the script documents (follow the prompt, then complete)';
       }
 
       jobs.push(entry);
@@ -3145,6 +3210,121 @@ function lastStatus(job, state) {
   }
 
   return null;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Source questions (a playable pipeline's orvind.sourceQuestions file) and their answers
+// ---------------------------------------------------------------------------------------------
+
+export const SOURCE_QUESTIONS_FORMAT = 'orvind.sourceQuestions';
+export const SOURCE_ANSWERS_MARKER = '<!-- source-answers-v1 -->';
+export const SOURCE_ANSWERS_TITLE = '# Answers to source questions';
+const QUESTION_ID = /^Q[1-9]\d*$/;
+const MAX_SOURCE_QUESTIONS = 200;
+
+/**
+ * Reads a source-questions file: format orvind.sourceQuestions, version 1, 1 to 200 questions with unique ids
+ * Q1, Q2, ... and an ask or a behavior each. Throws an Error that says what is wrong.
+ */
+export function parseSourceQuestions(text) {
+  let document;
+  try {
+    document = JSON.parse(String(text).replace(/^﻿/, ''));
+  } catch (error) {
+    throw new Error(`not valid JSON (${error.message})`);
+  }
+
+  if (!document || typeof document !== 'object' || document.format !== SOURCE_QUESTIONS_FORMAT || document.version !== 1) {
+    throw new Error(`not a source-questions file (format "${SOURCE_QUESTIONS_FORMAT}", version 1)`);
+  }
+
+  if (!Array.isArray(document.questions) || document.questions.length === 0 || document.questions.length > MAX_SOURCE_QUESTIONS) {
+    throw new Error(`it must hold between 1 and ${MAX_SOURCE_QUESTIONS} questions`);
+  }
+
+  const ids = [];
+  const questions = document.questions.map((question, index) => {
+    if (!question || typeof question !== 'object' || typeof question.id !== 'string' || !QUESTION_ID.test(question.id)) {
+      throw new Error(`question ${index + 1} needs an id of the form Q1, Q2, ...`);
+    }
+
+    if (ids.includes(question.id)) {
+      throw new Error(`the question id ${question.id} occurs twice`);
+    }
+
+    const text = (value) => (typeof value === 'string' ? value.trim() : '');
+    const list = (value) => (Array.isArray(value) ? value.filter((item) => typeof item === 'string' && item.trim() !== '').map((item) => item.trim()) : []);
+    if (!text(question.ask) && !text(question.behavior)) {
+      throw new Error(`question ${question.id} has neither an ask nor a behavior`);
+    }
+
+    ids.push(question.id);
+    return { id: question.id, behavior: text(question.behavior), evidence: list(question.evidence), files: list(question.files), ask: text(question.ask) };
+  });
+
+  const exported = document.export && typeof document.export === 'object' ? document.export : {};
+  return {
+    sessionId: typeof exported.sessionId === 'string' && exported.sessionId.trim() !== '' ? exported.sessionId.trim() : null,
+    ids,
+    questions,
+  };
+}
+
+/**
+ * Why a folder cannot take the answers, or null: it must be a finalized export session (protected data, no script
+ * hand-off left) and, when the questions name a session id, the session_<id> folder of that export.
+ */
+export function checkAnswerSession(session, questions) {
+  if (!fs.existsSync(session) || !fs.statSync(session).isDirectory()) {
+    return `The session folder was not found: ${session}`;
+  }
+
+  if (!fs.existsSync(path.join(session, 'data', 'schema-envelope.json'))) {
+    return `Not a finished export folder (it has no data/schema-envelope.json): ${session}`;
+  }
+
+  if (fs.existsSync(path.join(session, 'scripts', 'script_processing_job.json'))) {
+    return `The scripts of this export are still being documented; finish that first ("complete" with its job): ${session}`;
+  }
+
+  const folder = path.basename(session);
+  const folderId = folder.startsWith('session_') ? folder.slice('session_'.length) : folder;
+  if (questions && questions.sessionId && questions.sessionId !== folderId) {
+    return `The questions are about export session ${questions.sessionId}, but this folder is session ${folderId}.`;
+  }
+
+  return null;
+}
+
+/** The answers document a job starts from: the marker line, the title and one empty section per question id. */
+export function answersSkeleton(ids) {
+  return [SOURCE_ANSWERS_MARKER, SOURCE_ANSWERS_TITLE, '', ...ids.flatMap((id) => [`## ${id}`, '', ''])].join('\n');
+}
+
+/** The driver arguments of a job that answers source questions. */
+export function answerArgs(job, method = 'Answer') {
+  const args = ['-grSession', job.answer.session, '-grAnswerWorkspace', job.answer.workspace];
+  if (method === 'Answer') {
+    args.push('-grQuestions', job.answer.questions);
+  }
+
+  return args;
+}
+
+/** check / complete of an answer job: the answers workspace instead of the session's script hand-off. */
+async function runAnswerStep(job, method, options) {
+  if (!job.answer || !lastStatus(job, 'awaiting-agent')) {
+    return { ok: false, state: 'not-awaiting-agent', job: job.directory, error: 'This job has no answers that wait for the agent (run "answer" again).' };
+  }
+
+  if (method === 'Complete') {
+    const signedOff = writeResultFile(path.join(job.answer.workspace, 'scripts'));
+    if (signedOff.error) {
+      return { ok: false, state: 'not-awaiting-agent', job: job.directory, error: signedOff.error };
+    }
+  }
+
+  return runStep(job, method, answerArgs(job, method), options, false);
 }
 
 /**
